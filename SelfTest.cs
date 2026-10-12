@@ -66,6 +66,7 @@ internal static class SelfTest
                 Check(form.Bounds.Location == new Point(-120, 0), "negative virtual-screen origin");
 
             CheckInteraction();
+            CheckWindowSelection();
             var gate = new ShortcutGate();
             Check(gate.Process((uint)Keys.A, true, true, false, false, false) == (true, true), "Alt+A captured");
             Check(gate.Process((uint)Keys.A, true, true, false, false, false) == (true, false), "held key does not repeat");
@@ -95,7 +96,8 @@ internal static class SelfTest
 
             File.WriteAllText(report, "PASS: selection, boundary clamping, pixel-exact crop, annotation translation, mosaic, all drawing tools, PNG save/overwrite, negative screen origin.\n" +
                 "PASS: interaction handlers for reverse drag, move, resize, annotation, undo, text commit/cancel, reselect; toolbar and export previews generated.\n" + hotkeyResult + "\n" +
-                "PASS: priority hook installation, shortcut suppression/repeat/release/modifier filtering, quoted startup path.\n");
+                "PASS: priority hook installation, shortcut suppression/repeat/release/modifier filtering, quoted startup path.\n" +
+                "PASS: window overlap order, hover/click selection, manual drag override, empty desktop and native window enumeration.\n");
             return 0;
         }
         catch (Exception ex)
@@ -224,8 +226,34 @@ internal static class SelfTest
         return image;
     }
 
-    private sealed class InteractionForm(Bitmap image) : CaptureForm(image, new Rectangle(Point.Empty, image.Size))
+    private static void CheckWindowSelection()
     {
+        Rectangle[] windows = [new(100, 100, 300, 220), new(50, 50, 600, 450)];
+        Check(WindowDetection.At(windows, new Point(150, 150)) == windows[0], "frontmost overlapping window");
+        Check(WindowDetection.At(windows, new Point(500, 400)) == windows[1], "uncovered background window");
+        Check(WindowDetection.At(windows, new Point(800, 700)).IsEmpty, "desktop without window");
+        using var sample = DemoDesktop();
+        using (var form = new InteractionForm((Bitmap)sample.Clone(), windows))
+        {
+            form.Hover(new Point(150, 150));
+            Check(Read<Rectangle>(form, "hoveredWindow") == windows[0], "hover preview");
+            Check(Read<Rectangle>(form, "selection").IsEmpty, "hover does not commit selection");
+            form.ClickAt(new Point(150, 150));
+            Check(Read<Rectangle>(form, "selection") == windows[0], "click selects entire window");
+        }
+        using (var form = new InteractionForm((Bitmap)sample.Clone(), windows))
+        {
+            form.Drag(new Point(150, 150), new Point(550, 400));
+            Check(Read<Rectangle>(form, "selection") == new Rectangle(150, 150, 400, 250), "drag overrides window detection");
+        }
+        var desktop = SystemInformation.VirtualScreen;
+        foreach (var window in WindowDetection.Snapshot(desktop))
+            Check(new Rectangle(Point.Empty, desktop.Size).Contains(window), "window snapshot clipped to virtual desktop");
+    }
+
+    private sealed class InteractionForm(Bitmap image, IReadOnlyList<Rectangle>? windows = null) : CaptureForm(image, new Rectangle(Point.Empty, image.Size), windows)
+    {
+        public void Hover(Point point) => OnMouseMove(new MouseEventArgs(MouseButtons.None, 0, point.X, point.Y, 0));
         public void Drag(Point from, Point to)
         {
             OnMouseDown(new MouseEventArgs(MouseButtons.Left, 1, from.X, from.Y, 0));

@@ -9,6 +9,8 @@ internal class CaptureForm : Form
     private static readonly Color Accent = Color.FromArgb(7, 193, 112);
     private readonly Bitmap desktop;
     private readonly Rectangle screenBounds;
+    private readonly IReadOnlyList<Rectangle> windows;
+    private Rectangle hoveredWindow;
     private readonly List<Annotation> annotations = [];
     private readonly Dictionary<DrawTool, Button> toolButtons = [];
     private readonly Dictionary<float, Button> widthButtons = [];
@@ -29,10 +31,12 @@ internal class CaptureForm : Form
     private Point textAnchor;
     private Button undoButton = null!;
 
-    public CaptureForm(Bitmap desktop, Rectangle bounds)
+    public CaptureForm(Bitmap desktop, Rectangle bounds, IReadOnlyList<Rectangle>? windows = null)
     {
         this.desktop = desktop;
         screenBounds = bounds;
+        this.windows = windows ?? [];
+        hoveredWindow = WindowDetection.At(this.windows, new Point(MousePosition.X - bounds.X, MousePosition.Y - bounds.Y));
         Text = "轻截图 · 框选屏幕";
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.Manual;
@@ -176,11 +180,12 @@ internal class CaptureForm : Form
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
+        var highlighted = selection.IsEmpty && !dragging ? hoveredWindow : selection;
         g.DrawImageUnscaled(desktop, Point.Empty);
         using (var shade = new SolidBrush(Color.FromArgb(125, 0, 0, 0)))
         using (var outside = new Region(ClientRectangle))
         {
-            if (!selection.IsEmpty) outside.Exclude(selection);
+            if (!highlighted.IsEmpty) outside.Exclude(highlighted);
             g.FillRegion(shade, outside);
         }
         g.SmoothingMode = SmoothingMode.AntiAlias;
@@ -204,15 +209,22 @@ internal class CaptureForm : Form
             }
             DrawBadge(g, $"{selection.Width} × {selection.Height} px", new Point(selection.X, selection.Y - 32));
         }
-        else
+        else if (highlighted.IsEmpty)
         {
             var monitor = Screen.FromPoint(MousePosition).Bounds;
             monitor.Offset(-screenBounds.X, -screenBounds.Y);
-            const string hint = "拖动鼠标选择截图区域   ·   Esc / 右键取消";
+            const string hint = "悬停识别窗口 · 单击选中 · 拖动框选 · Esc / 右键取消";
             var size = TextRenderer.MeasureText(hint, Font);
             DrawBadge(g, hint, new Point(monitor.Left + (monitor.Width - size.Width) / 2, monitor.Top + monitor.Height / 2));
         }
         base.OnPaint(e);
+        if (selection.IsEmpty && !dragging && !hoveredWindow.IsEmpty)
+        {
+            using var border = new Pen(Accent, 2);
+            g.DrawRectangle(border, hoveredWindow);
+            DrawBadge(g, $"窗口 {hoveredWindow.Width} × {hoveredWindow.Height} px · 单击选中 / 拖动框选",
+                new Point(hoveredWindow.X, hoveredWindow.Y - 32));
+        }
     }
 
     private void DrawBadge(Graphics g, string text, Point at)
@@ -284,6 +296,11 @@ internal class CaptureForm : Form
         base.OnMouseMove(e);
         if (!dragging)
         {
+            if (selection.IsEmpty)
+            {
+                var candidate = WindowDetection.At(windows, e.Location);
+                if (candidate != hoveredWindow) { hoveredWindow = candidate; Invalidate(); }
+            }
             Cursor = HitEdges(e.Location) switch
             {
                 3 or 12 => Cursors.SizeNWSE, 6 or 9 => Cursors.SizeNESW,
@@ -320,6 +337,9 @@ internal class CaptureForm : Form
         OnMouseMove(e); // Preserve the release point even when the last move was coalesced.
         dragging = false;
         Capture = false;
+        if (selecting && beforeDrag.IsEmpty && Math.Abs(e.X - dragStart.X) < SystemInformation.DragSize.Width / 2 &&
+            Math.Abs(e.Y - dragStart.Y) < SystemInformation.DragSize.Height / 2)
+            selection = WindowDetection.At(windows, dragStart);
         if (selection.Width < 2 || selection.Height < 2) selection = beforeDrag;
         else if (selecting) annotations.Clear();
         if (pending is not null && (pending.Tool == DrawTool.Pen || pending.End != pending.Points[0])) annotations.Add(pending);

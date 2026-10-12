@@ -50,7 +50,7 @@ internal sealed class ScreenshotApp : ApplicationContext
         menu.Items.Add(autoStart);
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("使用说明", null, (_, _) => MessageBox.Show(
-            "Alt+A：开始截图\n拖动鼠标：框选区域\n选择工具：移动选区；拖动边框：调整大小\n\n" +
+            "Alt+A：开始截图\n悬停识别窗口，单击选中整个窗口\n拖动鼠标：自由框选区域\n选择工具：移动选区；拖动边框：调整大小\n\n" +
             "Enter / Ctrl+C / 双击选区：复制并完成\nCtrl+S：保存 PNG\nCtrl+Z：撤销标注\nEsc / 鼠标右键：取消截图\n\n" +
             "文字输入时 Enter 确认文字，Shift+Enter 换行。\n\n" +
             "Alt+A 冲突时会提示，轻截图优先处理此按键。\n若其他软件的键盘钩子抢先拦截，可重新注册。\n托盘菜单可勾选或取消开机启动。\n\n截图仅在本机处理。",
@@ -91,7 +91,7 @@ internal sealed class ScreenshotApp : ApplicationContext
             desktop = new Bitmap(bounds.Width, bounds.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using (var g = Graphics.FromImage(desktop))
                 g.CopyFromScreen(bounds.Location, Point.Empty, bounds.Size, CopyPixelOperation.SourceCopy);
-            capture = new CaptureForm(desktop, bounds);
+            capture = new CaptureForm(desktop, bounds, WindowDetection.Snapshot(bounds));
             desktop = null; // The form owns the frozen desktop from this point.
             capture.FormClosed += (_, _) => capture = null;
             capture.Show();

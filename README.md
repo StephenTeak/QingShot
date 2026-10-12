@@ -4,7 +4,12 @@
 
 ## 使用
 
-从 [GitHub Releases](https://github.com/StephenTeak/QingShot/releases/latest) 下载便携 ZIP，解压后双击 `QingShot.exe`；也可直接下载单文件 EXE。无需安装 .NET，适用于 Windows 10/11 x64。
+从 [GitHub Releases](https://github.com/StephenTeak/QingShot/releases/latest) 下载，适用于 Windows 10/11 x64。
+
+- **独立版**：下载便携 ZIP 或 `QingShot.exe`，无需安装 .NET；EXE 约 48.06 MB。
+- **轻量版**：下载 `QingShot-lite.exe`，约 0.22 MB；需要 [.NET 9 Windows Desktop Runtime x64](https://dotnet.microsoft.com/download/dotnet/9.0)，普通 .NET Runtime 不够。
+
+v1.2.1 精简运行时语言资源，保留简体中文及默认英文回退，独立 EXE 比 v1.2.0 缩小约 4.5%。大小采用十进制 MB。
 
 程序常驻系统托盘。按 **Alt+A** 或双击绿色托盘图标开始截图。右键托盘图标可重新注册快捷键、查看帮助或退出。
 

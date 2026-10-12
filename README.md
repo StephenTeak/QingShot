@@ -4,7 +4,7 @@
 
 ## 使用
 
-从 [GitHub Releases](https://github.com/StephenTeak/QingShot/releases/latest) 下载 `QingShot-v1.0.0-win-x64.zip`，解压后双击 `QingShot.exe`；也可直接下载单文件 EXE。无需安装 .NET，适用于 Windows 10/11 x64。
+从 [GitHub Releases](https://github.com/StephenTeak/QingShot/releases/latest) 下载便携 ZIP，解压后双击 `QingShot.exe`；也可直接下载单文件 EXE。无需安装 .NET，适用于 Windows 10/11 x64。
 
 程序常驻系统托盘。按 **Alt+A** 或双击绿色托盘图标开始截图。右键托盘图标可重新注册快捷键、查看帮助或退出。
 
@@ -24,7 +24,9 @@
 
 输入文字时，Ctrl+C、Ctrl+Z 保留文本框原有行为。保存对话框取消后可继续编辑，保存失败会保留截图。
 
-**快捷键冲突：** Windows 不允许两个程序同时注册同一全局快捷键。如果微信或其他软件已占用 Alt+A，轻截图会提示失败。先在对方软件中修改/释放该快捷键，再从轻截图托盘菜单选择“重新注册 Alt+A”。程序不会自动换成其他快捷键。
+**开机启动：** 右键托盘图标，勾选“开机启动（当前用户）”，下次登录 Windows 时自动运行；再次点击取消。默认关闭，无需管理员权限。程序应放在固定目录，移动或升级后请重新取消并勾选以更新路径。若在 Windows 设置中禁用了此启动项，需在那里重新启用。
+
+**快捷键冲突：** Alt+A 注册被微信或其他软件占用时，托盘气泡会提示并启用轻截图优先处理。低级键盘钩子拦截 Alt+A，阻止普通全局快捷键收到此按键；不会改动微信设置。退出轻截图即释放拦截。若其他软件后来安装的键盘钩子抢先处理，可从轻截图托盘菜单选择“重新注册 Alt+A”。Windows 没有绝对快捷键优先级，此行为无法保证覆盖所有其他钩子、安全桌面或高权限窗口。拦截仅处理 Alt+A，不记录键盘输入。
 
 ![轻截图编辑界面（合成桌面示例）](docs/editor-preview.png)
 
@@ -52,7 +54,7 @@ dotnet publish -c Release -r win-x64 --self-contained true -o dist -p:PublishSin
 - 冻结整个虚拟桌面后框选，支持跨显示器选区；采用 Per-Monitor V2 DPI 感知和物理像素坐标。
 - 标注跟随桌面内容坐标，移动选区改变裁剪范围。
 - 导出的图片不含遮罩、边框或工具栏；复制后的图片可直接粘贴到聊天或文档中。
-- 不包含 OCR、滚动长截图、录屏、窗口自动吸附或开机自启。
+- 不包含 OCR、滚动长截图、录屏或窗口自动吸附。
 - 受系统保护的窗口、DRM 视频和安全桌面可能无法捕获。
 
 源文件：`Program.cs`（托盘和热键）、`CaptureForm.cs`（截图编辑界面）、`Annotation.cs`（标注和裁剪）、`SelfTest.cs`（自检）。

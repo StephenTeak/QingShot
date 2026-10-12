@@ -66,6 +66,17 @@ internal static class SelfTest
                 Check(form.Bounds.Location == new Point(-120, 0), "negative virtual-screen origin");
 
             CheckInteraction();
+            var gate = new ShortcutGate();
+            Check(gate.Process((uint)Keys.A, true, true, false, false, false) == (true, true), "Alt+A captured");
+            Check(gate.Process((uint)Keys.A, true, true, false, false, false) == (true, false), "held key does not repeat");
+            Check(gate.Process((uint)Keys.A, false, false, false, false, false) == (true, false), "release swallowed even after Alt release");
+            foreach (var modifiers in new[] { (false, false, false, false), (true, true, false, false),
+                (true, false, true, false), (true, false, false, true) })
+                Check(gate.Process((uint)Keys.A, true, modifiers.Item1, modifiers.Item2, modifiers.Item3, modifiers.Item4) == (false, false),
+                    "ordinary A and other modifier combinations pass through");
+            Check(gate.Process((uint)Keys.B, true, true, false, false, false) == (false, false), "other keys pass through");
+            Check(Startup.Command(Path.Combine(Path.GetTempPath(), "Qing Shot", "QingShot.exe"))
+                == "\"" + Path.GetFullPath(Path.Combine(Path.GetTempPath(), "Qing Shot", "QingShot.exe")) + "\"", "startup path quoted");
             string hotkeyResult;
             using (var first = new HotkeyWindow())
             using (var second = new HotkeyWindow())
@@ -79,10 +90,12 @@ internal static class SelfTest
                     hotkeyResult = "PASS: native Alt+A registration, conflict, retry and release.";
                 }
                 else hotkeyResult = "SKIP: native Alt+A already occupied; conflict is reported correctly.";
+                Check(second.PriorityActive || first.PriorityActive, "priority keyboard hook installs even with hotkey conflict");
             }
 
             File.WriteAllText(report, "PASS: selection, boundary clamping, pixel-exact crop, annotation translation, mosaic, all drawing tools, PNG save/overwrite, negative screen origin.\n" +
-                "PASS: interaction handlers for reverse drag, move, resize, annotation, undo, text commit/cancel, reselect; toolbar and export previews generated.\n" + hotkeyResult + "\n");
+                "PASS: interaction handlers for reverse drag, move, resize, annotation, undo, text commit/cancel, reselect; toolbar and export previews generated.\n" + hotkeyResult + "\n" +
+                "PASS: priority hook installation, shortcut suppression/repeat/release/modifier filtering, quoted startup path.\n");
             return 0;
         }
         catch (Exception ex)
